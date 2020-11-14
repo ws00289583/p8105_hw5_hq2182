@@ -5,3 +5,100 @@ date: "11/13/2020"
 output: github_document
 ---
 
+```{r setup, include = FALSE}
+library(tidyverse)
+
+knitr::opts_chunk$set(
+  fig.width = 6,
+  fig.asp = .6,
+  out.width = "90%"
+)
+
+theme_set(theme_minimal() + theme(legend.position = "bottom"))
+
+options(
+  ggplot2.continuous.colour = "viridis",
+  ggplot2.continuous.fill = "viridis"
+)
+
+scale_colour_discrete = scale_color_viridis_d
+scale_fill_discrete = scale_fill_viridis_d
+```
+
+# Problem 1
+
+Read the data.
+Create a city_state variable (e.g. “Baltimore, MD”).
+Create a variable s.t. Closed w/o arrest = No arrest = "unsolved", while Close by arrest = solved
+
+
+```{r, message = FALSE}
+homicide_df = 
+  read_csv("homicide_data/homicide-data.csv") %>% 
+  mutate(
+    city_state = str_c(city, state, sep = ", "),
+    resolved = case_when(
+      disposition == "Closed without arrest" ~ "unsolved",
+      disposition == "Open/No arrest"        ~ "unsolved",
+      disposition == "Closed by arrest"      ~ "solved",
+    )
+  ) %>% 
+  select(city_state, resolved) %>% 
+  filter(city_state != "Tulsa, AL")
+```
+
+Creat a new dataframe to store #total cases and #unsolved cases.
+```{r, message = FALSE}
+aggregate_df = 
+  homicide_df %>% 
+  group_by(city_state) %>% 
+  summarize(
+    hom_total = n(),
+    hom_unsolved = sum(resolved == "unsolved")
+  )
+```
+
+Run `prop.test` for "Baltimore, MD";
+Apply `broom::tidy` to the result and pull the estimated proportion and confidence intervals,
+then save them in another dataframe.
+```{r}
+Baltimore_prop = 
+  prop.test(
+  aggregate_df %>% filter(city_state == "Baltimore, MD") %>% pull(hom_unsolved),  
+  aggregate_df %>% filter(city_state == "Baltimore, MD") %>% pull(hom_total)) %>% 
+  broom::tidy() %>% 
+  select(estimate, conf.low, conf.high)
+```
+
+Run `prop.test` for each city and extract estimated proportion and confidence intervals.
+```{r}
+results_df = 
+  aggregate_df %>% 
+  mutate(
+    prop_tests = map2(.x = hom_unsolved, .y = hom_total, ~prop.test(x = .x, n = .y)),
+    tidy_tests = map(.x = prop_tests, ~broom::tidy(.x))
+  ) %>% 
+  select(-prop_tests) %>% 
+  unnest(tidy_tests) %>% 
+  select(city_state, estimate, conf.low, conf.high)
+```
+
+Create a plot that shows the estimates and CIs for each city, add error bars based on the upper and lower limits.
+```{r}
+results_df %>% 
+  mutate(city_state = fct_reorder(city_state, estimate)) %>% 
+  ggplot(aes(x = city_state, y = estimate)) +
+  geom_point() + 
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high)) + 
+  ylab("Unsolved Homicides Proportion") +
+  xlab("City, State") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+```
+
+
+# Problem 2
+
+```{r}
+
+```
+
