@@ -5,7 +5,7 @@ date: "11/13/2020"
 output: github_document
 ---
 
-```{r setup, include = FALSE}
+```{r setup, include = FALSE, message = FALSE}
 library(tidyverse)
 
 knitr::opts_chunk$set(
@@ -136,6 +136,8 @@ Comment: It's obvious that observation values of experimental group are larger t
 
 ## Problem 3
 
+Generate dataset, perform `t.test`, and extract estimate mean and p-value.
+For the `t.test`, the null hypothesis is true mean equals to 0, while alternative hypothesis is true mean is not equal to 0.
 ```{r}
 sim_est_p = function(n = 30, mu = 0, sigma = 5) {
   sim_data = tibble(
@@ -149,13 +151,19 @@ sim_est_p = function(n = 30, mu = 0, sigma = 5) {
   )
 }
 
-
+sim_result = 
+  tibble(sample_mean = c(0:6)) %>% 
+  mutate(
+    output_lists = map(.x = sample_mean, ~rerun(2, sim_est_p(mu = .x))),
+    estimate_df = map(output_lists, bind_rows)
+  ) %>% 
+  select(-output_lists) %>% 
+  unnest(estimate_df)
 ```
 
+Make a plot showing the proportion of times the null was rejected (the power of the test) on the y axis and the true value of μ on the x axis.
+Given alpha = 0.05, so we reject the null when p<0.05.
 ```{r}
-sample_mu = c(0:6)
-data_lists = map(.x = sample_mu, ~rerun(2, sim(mu = .x)))
-test_result = 
-  
+
 ```
 
