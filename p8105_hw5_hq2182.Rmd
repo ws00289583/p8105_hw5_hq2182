@@ -7,6 +7,7 @@ output: github_document
 
 ```{r setup, include = FALSE, message = FALSE}
 library(tidyverse)
+library(patchwork)
 
 knitr::opts_chunk$set(
   fig.width = 6,
@@ -32,7 +33,7 @@ Create a city_state variable (e.g. “Baltimore, MD”).
 Create a variable s.t. "Closed w/o arrest" & "No arrest" = "unsolved", while "Close by arrest" = "solved"
 
 
-```{r, message = FALSE}
+```{r, message=FALSE}
 homicide_df = 
   read_csv("homicide_data/homicide-data.csv") %>% 
   mutate(
@@ -48,7 +49,7 @@ homicide_df =
 ```
 
 Creat a new dataframe to store #total cases and #unsolved cases.
-```{r, message = FALSE}
+```{r, message=FALSE}
 aggregate_df = 
   homicide_df %>% 
   group_by(city_state) %>% 
@@ -68,6 +69,8 @@ Baltimore_prop =
   aggregate_df %>% filter(city_state == "Baltimore, MD") %>% pull(hom_total)) %>% 
   broom::tidy() %>% 
   select(estimate, conf.low, conf.high)
+
+Baltimore_prop
 ```
 
 Run `prop.test` for each city and extract estimated proportion and confidence intervals.
@@ -81,6 +84,8 @@ results_df =
   select(-prop_tests) %>% 
   unnest(tidy_tests) %>% 
   select(city_state, estimate, conf.low, conf.high)
+
+head(results_df)
 ```
 
 Create a plot that shows the estimates and CIs for each city, add error bars based on the upper and lower limits.
@@ -103,7 +108,7 @@ Read, clean, and tidy data.
 `id` contains identical id for each participant.
 `week` is the number of week of observation.  
 `observations` is the measured value of interest.  
-```{r, message = FALSE}
+```{r, message=FALSE}
 data_df = 
   tibble(
     file_name = list.files("lda_data"),
@@ -112,16 +117,20 @@ data_df =
     path = str_c("lda_data/", file_name),
     data = map(.x = path, ~read_csv(.x)),
     arm = str_extract(file_name, "[a-z]{1,3}"),
-    id = extract_numeric(file_name)) %>% 
+    id = readr::parse_number(file_name)) %>% 
   select(id, arm, data) %>% 
   unnest(data) %>% 
   pivot_longer(week_1:week_8,
                names_to = "week",
                values_to = "observations") %>% 
   mutate(
-    week = extract_numeric(week)
+    week = readr::parse_number(week)
   )
 ```
+```{r}
+head(data_df)
+```
+
 
 Make a spaghetti plot showing observations on each subject over time, and comment on differences between groups.
 ```{r}
@@ -137,7 +146,10 @@ Comment: It's obvious that observation values of experimental group are larger t
 ## Problem 3
 
 Generate dataset, perform `t.test`, and extract estimate mean and p-value.
-For the `t.test`, the null hypothesis is true mean equals to 0, while alternative hypothesis is true mean is not equal to 0.
+For the `t.test`, the null hypothesis is true mean equals to 0, while alternative hypothesis is true mean is not equal to 0.  
+The default setting is sample size = 30, mean = 0, and standard deviation = 5.  
+The estimate mean and p-value of test will be saved in a tibble.  
+`sim_result` run 5000 times for each true_mean from 0 to 6, then save the result in a tibble.  
 ```{r}
 sim_est_p = function(n = 30, mu = 0, sigma = 5) {
   sim_data = tibble(
@@ -152,18 +164,61 @@ sim_est_p = function(n = 30, mu = 0, sigma = 5) {
 }
 
 sim_result = 
-  tibble(sample_mean = c(0:6)) %>% 
+  tibble(true_mean = c(0:6)) %>% 
   mutate(
-    output_lists = map(.x = sample_mean, ~rerun(2, sim_est_p(mu = .x))),
+    output_lists = map(.x = true_mean, ~rerun(5000, sim_est_p(mu = .x))),
     estimate_df = map(output_lists, bind_rows)
   ) %>% 
   select(-output_lists) %>% 
   unnest(estimate_df)
 ```
 
-Make a plot showing the proportion of times the null was rejected (the power of the test) on the y axis and the true value of μ on the x axis.
-Given alpha = 0.05, so we reject the null when p<0.05.
-```{r}
 
+Make a plot showing the proportion of times the null was rejected (the power of the test) on the y axis and the true value of μ on the x axis.
+Given alpha = 0.05, so we reject the null when p<0.05.  
+```{r}
+prop_plot = 
+  sim_result %>% 
+  filter(p_value < 0.05) %>% 
+  group_by(true_mean) %>% 
+  mutate(
+    rejected = n(),
+    power = rejected/5000
+  ) %>% 
+  ggplot(aes(x = true_mean, y = power)) +
+  geom_point()
+
+prop_plot
 ```
+Comment: As the true mean increases from 0 to 6, the power of the test increases (easier to reject the null). We almost reject the null for all estimated mean from dataset with true mean = 5 and 6. The power is close to 1.  
+
+Make a plot showing the average estimate of mean (μ_hat) on the y axis and the true value of μ on the x axis.
+Make a second plot the average μ_hat only in samples for which the null was rejected on the y axis and the true value of μ on the x axis.
+```{r}
+est_mu_plot = 
+  sim_result %>% 
+  group_by(true_mean) %>% 
+  mutate(
+    avg_estimate_mean = mean(estimate)
+  ) %>% 
+  ggplot(aes(x = true_mean, y = avg_estimate_mean)) +
+  geom_point()
+
+reject_plot = 
+  sim_result %>% 
+  filter(p_value < 0.05) %>% 
+  group_by(true_mean) %>% 
+  mutate(
+    avg_estimate_mean = mean(estimate)
+  ) %>% 
+  ggplot(aes(x = true_mean, y = avg_estimate_mean)) +
+  geom_point()
+
+est_mu_plot / reject_plot
+```
+
+Comment:  
+
+  *  For the first plot, the average μ_hat is very close to the true mean because we have a large sample size.  
+  *  For the second plot, when the null is rejected, the average μ_hat of those data is far away from 0. When the true mean is close to 0, the μ_hat is far away from 0. If the true mean >= 3, we will reject the null for μ_hat that closes to the true mean because it's considered different from mu = 0.
 
