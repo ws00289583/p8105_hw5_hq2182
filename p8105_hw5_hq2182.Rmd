@@ -220,5 +220,5 @@ est_mu_plot / reject_plot
 Comment:  
 
   *  For the first plot, the average μ_hat is very close to the true mean because we have a large sample size.  
-  *  For the second plot, when the null is rejected, the average μ_hat of those data is far away from 0. When the true mean is close to 0, the μ_hat is far away from 0. If the true mean >= 3, we will reject the null for μ_hat that closes to the true mean because it's considered different from mu = 0.
+  *  For the second plot, when the null is rejected, all average μ_hat of those dataare far away from 0. When the true mean is close to 0, the μ_hat has to be different from the true mean to reject the null. If the true mean >= 3, we will reject the null for μ_hat that closes to the true mean because it's considered different from mu = 0 already.
 
