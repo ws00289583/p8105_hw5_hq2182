@@ -30,9 +30,10 @@ scale_fill_discrete = scale_fill_viridis_d
 
 Read the data.
 Create a city_state variable (e.g. “Baltimore, MD”).
-Create a variable s.t. "Closed w/o arrest" & "No arrest" = "unsolved", while "Close by arrest" = "solved"
+Create a variable s.t. "Closed w/o arrest" & "No arrest" = "unsolved", while "Close by arrest" = "solved"  
 
-
+Description of Raw data:  
+There are 12 variables in the data on homicides in 50 large U.S. cities. Including a unique uid for each case, reported date, city, state, location information (latitude and longitude), and disposition of the case. The data also contains last name, first name, age, gender, and biological sex of victims.
 ```{r, message=FALSE}
 homicide_df = 
   read_csv("homicide_data/homicide-data.csv") %>% 
