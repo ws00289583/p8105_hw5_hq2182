@@ -136,9 +136,11 @@ head(data_df)
 Make a spaghetti plot showing observations on each subject over time, and comment on differences between groups.
 ```{r}
 data_df %>% 
-  group_by(id, arm) %>% 
-  ggplot(aes(x = week, y = observations, color = arm)) +
-  geom_point() + geom_line()  
+  unite(arm_id, c(arm, id), sep = " ", remove = FALSE) %>% 
+  select(-id) %>% 
+  ggplot(aes(x = week, y = observations, color = arm_id)) +
+  geom_point(aes(group = arm_id, color = arm)) + 
+  geom_line(aes(group = arm_id, color = arm))  
 ```
 
 Comment: It's obvious that observation values of experimental group are larger than observation values of control groups. There were overlapping values between two groups at the beginning of experiment. However, observations were distinct bewteen two groups at week 7 and 8 (the end of experiment).
@@ -164,6 +166,7 @@ sim_est_p = function(n = 30, mu = 0, sigma = 5) {
   )
 }
 
+set.seed(5000)
 sim_result = 
   tibble(true_mean = c(0:6)) %>% 
   mutate(
